@@ -17,6 +17,7 @@ tape('splice', function (t) {
   bufs.blocks[0] = a
   bufs.blocks[1] = b
   bufs.blocks[2] = c
+  bufs.offset = 96
 
   function test(start, end, expected) {
     bufs.read(start, end, function (err, actual) {
@@ -43,11 +44,11 @@ tape('splice', function (t) {
 })
 
 tape('read file', function (t) {
-  var fd = fs.openSync('/tmp/test_block-reader_'+Date.now(), 'a+')
-  fs.appendFileSync(fd, a)
-  fs.appendFileSync(fd, b)
-  fs.appendFileSync(fd, c)
-  var bufs = Blocks(File(fd, 32), 32)
+  var file = '/tmp/test_block-reader_'+Date.now()
+  fs.appendFileSync(file, a)
+  fs.appendFileSync(file, b)
+  fs.appendFileSync(file, c)
+  var bufs = Blocks(File(file, 32, 'a+'), 32)
 
   t.plan(7)
 
@@ -72,6 +73,16 @@ tape('read file', function (t) {
   test(16, 32 + 16, Buffer.concat([_a, _b]))
   test(32 + 16, 64 + 16, Buffer.concat([_b, _c]))
 
+})
+
+tape('read empty file', function (t) {
+  var file = '/tmp/test_block-reader_'+Date.now()
+  var bufs = Blocks(File(file, 32, 'a+'), 32)
+  bufs.read(0, 32, function (err, buf, bytes_read) {
+    t.ok(err)
+    t.equal(bytes_read, 0)
+    t.end()
+  })
 })
 
 
