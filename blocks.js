@@ -10,6 +10,11 @@ var fs = require('fs')
   (always read a buffer before write, except for appending a new buffer)
 */
 
+function assertInteger (a) {
+  if(!Number.isInteger(a))
+    throw new Error('expected positive integer, was:'+JSON.stringify(a))
+}
+
 module.exports = function (file, block_size) {
   var blocks = [], offset = 0, br
 
@@ -32,6 +37,7 @@ module.exports = function (file, block_size) {
   }
 
   function read(start, end, cb) {
+    assertInteger(start);assertInteger(end)
     //check if start & end are part of the same buffer
     var i = ~~(start/block_size)
 
@@ -60,15 +66,15 @@ module.exports = function (file, block_size) {
     read: read,
     readUInt32BE: function (start, cb) {
       //TODO: avoid creating a buffer when not necessary?
-      read(start, start+4, function (err, buf) {
+      read(start, start+4, function (err, buf, bytes_read) {
         if(err) return cb(err)
         cb(null, buf.readUInt32BE(0))
       })
     },
     size: file && file.size,
+    offset: file && file.offset,
     //starting to realize: what I really need is just a lib for
     //relative copies between two arrays of buffers, with a given offset.
-
     append: function (buf, cb) {
       //write to the end of the file.
       //if successful, copy into cache.
@@ -80,7 +86,7 @@ module.exports = function (file, block_size) {
         var i = ~~(start/block_size)
         while(start < offset) {
           var block_start = i*block_size
-          if(blocks[i]) {
+          if(Buffer.isBuffer(blocks[i])) {
               var write_start = start
               var write_end = Math.min(start - block_start, block_size)
               var len = block_size - (start - block_start)
@@ -98,6 +104,7 @@ module.exports = function (file, block_size) {
     }
   }
 }
+
 
 
 
