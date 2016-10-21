@@ -1,25 +1,55 @@
 var fs = require('fs')
 
+var Eventually = require('eventually')
+
 module.exports = function (file, block_size, flags) {
   var self
-  var fd = fs.openSync(file, flags || 'r+')
-  var offset = fs.statSync(file).size
+  var fd = Eventually()
+  var offset = Eventually() 
+  //fs.openSync(file, flags || 'r+')
+  fs.open(file, flags || 'r+', function (err, _fd) {
+    fd.set(_fd || err)
+    fs.stat(file, function (err, stat) {
+      offset.set(stat.size)
+    })
+  })
+
+  var writing = 0
 
   return self = {
     get: function (i, cb) {
-      var buf = new Buffer(block_size)
-      fs.read(fd, buf, 0, block_size, i*block_size, function (err, bytes_read) {
-        cb(err, buf, bytes_read)
+      fd.once(function (_fd) {
+        var buf = new Buffer(block_size)
+        fs.read(_fd, buf, 0, block_size, i*block_size, function (err, bytes_read) {
+          cb(err, buf, bytes_read)
+        })
       })
     },
-    size: function () { return offset },
+    offset: offset,
+    size: function () { return offset.value },
     append: function (buf, cb) {
-      fs.write(fd, buf, 0, buf.length, offset, function (err, written) {
-        cb(null, offset = offset + written)
+      if(writing++) throw new Error('already writing to this file')
+      fd.once(function (_fd) {
+        offset.once(function (_offset) {
+          fs.write(_fd, buf, 0, buf.length, _offset, function (err, written) {
+            writing = 0
+            offset.set(_offset+written)
+            cb(null, offset.value)
+          })
+        })
       })
     }
   }
 
 }
+
+
+
+
+
+
+
+
+
 
 
