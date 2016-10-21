@@ -72,3 +72,17 @@ tape('append another half block', function (t) {
   })
 })
 
+tape('appending in parallel throws', function (t) {
+  blocks.append(a, function (err, offset) {
+    if(err) throw err
+    t.equal(offset, 128)
+    t.end()
+  })
+
+  t.throws(function () {
+    blocks.append(b, function (err, offset) {
+      t.fail('should never be called')
+    })
+  })
+
+})
