@@ -34,15 +34,13 @@ module.exports = function (file, block_size, flags) {
           fs.write(_fd, buf, 0, buf.length, _offset, function (err, written) {
             writing = 0
             offset.set(_offset+written)
-            cb(null, offset.value)
+            cb(null, _offset+written)
           })
         })
       })
     }
   }
-
 }
-
 
 
 
