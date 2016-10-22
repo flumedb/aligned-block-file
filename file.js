@@ -20,6 +20,7 @@ module.exports = function (file, block_size, flags) {
     get: function (i, cb) {
       fd.once(function (_fd) {
         var buf = new Buffer(block_size)
+        buf.fill(0) //security
         fs.read(_fd, buf, 0, block_size, i*block_size, function (err, bytes_read) {
           cb(err, buf, bytes_read)
         })
@@ -41,13 +42,4 @@ module.exports = function (file, block_size, flags) {
     }
   }
 }
-
-
-
-
-
-
-
-
-
 
