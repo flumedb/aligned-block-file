@@ -1,5 +1,4 @@
 var fs = require('fs')
-
 /*
   Represent a file, as a table of buffers.
   copy from a range in the file into a buffer
@@ -16,7 +15,7 @@ function assertInteger (a) {
 }
 
 module.exports = function (file, block_size) {
-  var blocks = [], offset = 0, br
+  var blocks = [], br
 
   function get(i, cb) {
     if(Buffer.isBuffer(blocks[i]))
@@ -29,8 +28,6 @@ module.exports = function (file, block_size) {
       file.get(i, function (err, buf, bytes_read) {
         var cbs = blocks[i]
         blocks[i] = buf
-        if(bytes_read !== block_size)
-          offset = (i*block_size) + bytes_read
         while(cbs.length) cbs.shift()(err, buf, bytes_read)
       })
     }
@@ -78,34 +75,38 @@ module.exports = function (file, block_size) {
     append: function (buf, cb) {
       //write to the end of the file.
       //if successful, copy into cache.
-      file.append(buf, function (err, offset) {
-        if(err) return cb(err)
-        var start = offset - buf.length
-        br.offset = offset
+      file.offset.once(function (_offset) {
+
+        var start = _offset
         var b_start = 0
         var i = ~~(start/block_size)
-        while(start < offset) {
+        while(b_start < buf.length) { //start < _offset+buf.length) {
           var block_start = i*block_size
+          if(null == blocks[i]) {
+            blocks[i] = new Buffer(block_size)
+            blocks[i].fill(0)
+          }
+
           if(Buffer.isBuffer(blocks[i])) {
-              var write_start = start
-              var write_end = Math.min(start - block_start, block_size)
-              var len = block_size - (start - block_start)
-              buf.copy(blocks[i], start - block_start, b_start, len)
+              var len = Math.min(block_size - (start - block_start), block_size)
+              buf.copy(blocks[i], start - block_start, b_start, b_start + len)
               start += len
               b_start += len
           }
+          else if(Array.isArray(blocks[i]))
+            throw new Error('should never happen: new block should be initialized, before a read ever happens')
           else
             start += block_size
 
           i++
         }
-        cb(null, offset)
+
+        file.append(buf, function (err, offset) {
+          if(err) return cb(err)
+          cb(null, offset)
+        })
       })
     }
   }
 }
-
-
-
-
 
