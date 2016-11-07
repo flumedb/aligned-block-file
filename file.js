@@ -1,11 +1,11 @@
 var fs = require('fs')
 
-var Eventually = require('eventually')
+var Obv = require('obv')
 
 module.exports = function (file, block_size, flags) {
   var self
-  var fd = Eventually()
-  var offset = Eventually() 
+  var fd = Obv()
+  var offset = Obv()
   //fs.openSync(file, flags || 'r+')
   fs.open(file, flags || 'r+', function (err, _fd) {
     fd.set(_fd || err)
@@ -42,4 +42,7 @@ module.exports = function (file, block_size, flags) {
     }
   }
 }
+
+
+
 
