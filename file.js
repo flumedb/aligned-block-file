@@ -1,16 +1,19 @@
 var fs = require('fs')
-
+var mkdirp = require('mkdirp')
 var Obv = require('obv')
+var path = require('path')
 
 module.exports = function (file, block_size, flags) {
   var self
   var fd = Obv()
   var offset = Obv()
   //fs.openSync(file, flags || 'r+')
-  fs.open(file, flags || 'r+', function (err, _fd) {
-    fd.set(_fd || err)
-    fs.stat(file, function (err, stat) {
-      offset.set(stat.size)
+  mkdirp(path.dirname(file), function () {
+    fs.open(file, flags || 'r+', function (err, _fd) {
+      fd.set(_fd || err)
+      fs.stat(file, function (err, stat) {
+        offset.set(err ? 0 : stat.size)
+      })
     })
   })
 
@@ -42,6 +45,8 @@ module.exports = function (file, block_size, flags) {
     }
   }
 }
+
+
 
 
 
