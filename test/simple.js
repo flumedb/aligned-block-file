@@ -12,11 +12,20 @@ b.fill('b')
 var c = new Buffer(32)
 c.fill('c')
 
+function Cache () {
+  var c = []
+  return {
+    get: function (key) { return c[key] },
+    set: function (key, value) { c[key] = value }
+  }
+}
+
 tape('splice', function (t) {
-  var bufs = Blocks(null, 32)
-  bufs.blocks[0] = a
-  bufs.blocks[1] = b
-  bufs.blocks[2] = c
+  var cache = Cache()
+  var bufs = Blocks(null, 32, cache)
+  cache.set(0, a)
+  cache.set(1, b)
+  cache.set(2, c)
   bufs.offset = 96
 
   function test(start, end, expected) {
