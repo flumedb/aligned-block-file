@@ -14,21 +14,25 @@ function assertInteger (a) {
     throw new Error('expected positive integer, was:'+JSON.stringify(a))
 }
 
-module.exports = function (file, block_size) {
-  var blocks = [], br
+var Cache = require('hashlru')
+
+module.exports = function (file, block_size, cache) {
+  var cbs = [], br
+  cache = cache || Cache(1000)
 
   function get(i, cb) {
-    if(Buffer.isBuffer(blocks[i]))
-      cb(null, blocks[i], block_size)
-    else if(Array.isArray(blocks[i]))
-      blocks[i].push(cb)
+    if(Buffer.isBuffer(cache.get(i)))
+      cb(null, cache.get(i), block_size)
+    else if(Array.isArray(cbs[i]))
+      cbs[i].push(cb)
     else {
       var buf = new Buffer(block_size)
-      blocks[i] = [cb]
+      cbs[i] = [cb]
       file.get(i, function (err, buf, bytes_read) {
-        var cbs = blocks[i]
-        blocks[i] = buf
-        while(cbs.length) cbs.shift()(err, buf, bytes_read)
+        var cb = cbs[i]
+        //cache.set(i] = null
+        cache.set(i, buf)
+        while(cb.length) cb.shift()(err, buf, bytes_read)
       })
     }
   }
@@ -59,7 +63,6 @@ module.exports = function (file, block_size) {
   }
 
   return br = {
-    blocks: blocks,
     read: read,
     readUInt32BE: function (start, cb) {
       //TODO: avoid creating a buffer when not necessary?
@@ -82,18 +85,19 @@ module.exports = function (file, block_size) {
         var i = ~~(start/block_size)
         while(b_start < buf.length) { //start < _offset+buf.length) {
           var block_start = i*block_size
-          if(null == blocks[i]) {
-            blocks[i] = new Buffer(block_size)
-            blocks[i].fill(0)
+          if(null == cache.get(i)) {
+            var b = new Buffer(block_size)
+            b.fill(0)
+            cache.set(i, b)
           }
 
-          if(Buffer.isBuffer(blocks[i])) {
+          if(Buffer.isBuffer(cache.get(i))) {
               var len = Math.min(block_size - (start - block_start), block_size)
-              buf.copy(blocks[i], start - block_start, b_start, b_start + len)
+              buf.copy(cache.get(i), start - block_start, b_start, b_start + len)
               start += len
               b_start += len
           }
-          else if(Array.isArray(blocks[i]))
+          else if(Array.isArray(cbs[i]))
             throw new Error('should never happen: new block should be initialized, before a read ever happens')
           else
             start += block_size
