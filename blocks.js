@@ -30,7 +30,7 @@ module.exports = function (file, block_size, cache) {
       cbs[i] = [cb]
       file.get(i, function (err, buf, bytes_read) {
         var cb = cbs[i]
-        //cache.set(i] = null
+        cbs[i] = null
         cache.set(i, buf)
         while(cb.length) cb.shift()(err, buf, bytes_read)
       })
@@ -85,15 +85,16 @@ module.exports = function (file, block_size, cache) {
         var i = ~~(start/block_size)
         while(b_start < buf.length) { //start < _offset+buf.length) {
           var block_start = i*block_size
-          if(null == cache.get(i)) {
-            var b = new Buffer(block_size)
+          var b = cache.get(i)
+          if(null == b) {
+            b = new Buffer(block_size)
             b.fill(0)
             cache.set(i, b)
           }
-
-          if(Buffer.isBuffer(cache.get(i))) {
+          //including if set in above if...
+          if(Buffer.isBuffer(b)) {
               var len = Math.min(block_size - (start - block_start), block_size)
-              buf.copy(cache.get(i), start - block_start, b_start, b_start + len)
+              buf.copy(b, start - block_start, b_start, b_start + len)
               start += len
               b_start += len
           }
