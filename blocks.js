@@ -26,12 +26,11 @@ module.exports = function (file, block_size, cache) {
     else if(Array.isArray(cbs[i]))
       cbs[i].push(cb)
     else {
-      var buf = new Buffer(block_size)
       cbs[i] = [cb]
       file.get(i, function (err, buf, bytes_read) {
         var cb = cbs[i]
         cbs[i] = null
-        cache.set(i, buf)
+        if(!err) cache.set(i, buf)
         while(cb.length) cb.shift()(err, buf, bytes_read)
       })
     }
@@ -56,7 +55,17 @@ module.exports = function (file, block_size, cache) {
         start += (read_end - read_start)
 
         if(start < end) next(i+1)
-        else cb(null, bufs.length == 1 ? bufs[0] : Buffer.concat(bufs), bytes_read)
+        else {
+          var buffer = bufs.length == 1 ? bufs[0] : Buffer.concat(bufs)
+          if(!buffer.length)
+            return cb(new Error('read an empty buffer at:'+start + ' to ' + end + '\n'+
+    JSON.stringify({
+      start: start, end: end, i:i,
+      bytes_read: bytes_read,
+      bufs: bufs
+    })))
+          cb(null, buffer, bytes_read)
+        }
       })
     })(i)
 
@@ -114,4 +123,10 @@ module.exports = function (file, block_size, cache) {
     }
   }
 }
+
+
+
+
+
+
 

@@ -21,11 +21,27 @@ module.exports = function (file, block_size, flags) {
 
   return self = {
     get: function (i, cb) {
-      fd.once(function (_fd) {
+      offset.once(function (_offset) {
+        var max = ~~(_offset / block_size)
+        if(i > max)
+          return cb(new Error('aligned-block-file/file.get: requested block index was greater than max, got:'+i+', expected less than or equal to:'+max))
+
         var buf = new Buffer(block_size)
         buf.fill(0) //security
-        fs.read(_fd, buf, 0, block_size, i*block_size, function (err, bytes_read) {
-          cb(err, buf, bytes_read)
+        fs.read(fd.value, buf, 0, block_size, i*block_size, function (err, bytes_read) {
+          if(err) cb(err)
+          else if(
+            //if bytes_read is wrong
+            buf.length !== bytes_read &&
+            //unless this is the very last block and it is incomplete.
+            !((i*block_size + bytes_read) == offset.value)
+          )
+            cb(new Error(
+              'aligned-block-file/flie.get: did not read whole block, expected length:'+
+              block_size+' but got:'+bytes_read
+            ))
+          else
+            cb(null, buf, bytes_read)
         })
       })
     },
@@ -37,6 +53,8 @@ module.exports = function (file, block_size, flags) {
         offset.once(function (_offset) {
           fs.write(_fd, buf, 0, buf.length, _offset, function (err, written) {
             writing = 0
+            if(err) return cb(err)
+            if(written !== buf.length) return cb(new Error('wrote less bytes than expected:'+written+', but wanted:'+buf.length))
             offset.set(_offset+written)
             cb(null, _offset+written)
           })
@@ -45,6 +63,11 @@ module.exports = function (file, block_size, flags) {
     }
   }
 }
+
+
+
+
+
 
 
 
