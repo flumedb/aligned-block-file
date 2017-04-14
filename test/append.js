@@ -16,6 +16,12 @@ b.fill('b')
 
 var c = new Buffer(32)
 c.fill('c')
+var d = new Buffer(32)
+d.fill('d')
+var e = new Buffer(24)
+e.fill('e')
+var f = new Buffer(64)
+f.fill('f')
 
 tape('append one block', function (t) {
 
@@ -86,3 +92,40 @@ tape('appending in parallel throws', function (t) {
   })
 
 })
+
+tape('read in parallel with append', function (t) {
+  blocks.offset.once(function (o) {
+    blocks.append(c, function (err, _o) {
+      t.equal(160, _o)
+      t.end()
+    })
+    blocks.read(o, o+16, function (err, buf) {
+      if(err) throw err
+      t.deepEqual(buf, c.slice(0, 16))
+    })
+  })
+
+})
+
+
+tape('append half block, then overlapping block', function (t) {
+  blocks.append(e, function (err, offset) {
+    if(err) throw err
+    t.equal(offset, 184)
+    blocks.read(144, 176, function (err, data) {
+      if(err) throw err
+      console.log(err, data)
+      blocks.append(f, function (err, offset) {
+        blocks.read(176, 180, function (err, data) {
+          if(err) throw err
+          console.log(err, data)
+          if(err) throw err
+          t.equal(offset, 248)
+          t.end()
+        })
+      })
+    })
+  })
+})
+
+
