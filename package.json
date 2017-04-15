@@ -8,7 +8,7 @@
     "url": "git://github.com/flumedb/aligned-block-file.git"
   },
   "dependencies": {
-    "hashlru": "^1.0.3",
+    "hashlru": "^2.1.0",
     "mkdirp": "^0.5.1",
     "obv": "0.0.0"
   },
