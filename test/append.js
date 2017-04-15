@@ -5,127 +5,158 @@ var tape = require('tape')
 var Blocks = require('../blocks')
 var File = require('../file')
 
-var filename = '/tmp/test_block-reader_'+Date.now()
-var blocks = Blocks(File(filename, 32, 'a+'), 32)
+var store = {}
+var cache = {
+  get: function (i) { return store[i] },
+  set: function (i, v) { store[i] = v }
+}
 
-var a = new Buffer(32)
-a.fill('a')
+module.exports = function (reduce) {
 
-var b = new Buffer(32)
-b.fill('b')
+  var filename = '/tmp/test_block-reader_'+Date.now()
+  var blocks = reduce(null)
 
-var c = new Buffer(32)
-c.fill('c')
-var d = new Buffer(32)
-d.fill('d')
-var e = new Buffer(24)
-e.fill('e')
-var f = new Buffer(64)
-f.fill('f')
+  var a = new Buffer(32)
+  a.fill('a')
 
-tape('append one block', function (t) {
+  var b = new Buffer(32)
+  b.fill('b')
 
-  blocks.append(a, function (err, offset) {
-    if(err) throw err
-    t.equal(offset, 32)
-    t.end()
+  var c = new Buffer(32)
+  c.fill('c')
+  var d = new Buffer(32)
+  d.fill('d')
+  var e = new Buffer(24)
+  e.fill('e')
+  var f = new Buffer(64)
+  f.fill('f')
+
+  tape('append one block', function (t) {
+    blocks.append(a, function (err, offset) {
+      if(err) throw err
+      t.equal(offset, 32)
+      t.end()
+    })
+
   })
 
-})
 
+  tape('append another block', function (t) {
+    blocks = reduce(blocks)
+    blocks.append(b, function (err, offset) {
+      if(err) throw err
+      t.equal(offset, 64)
+      t.end()
+    })
 
-tape('append another block', function (t) {
-
-  blocks.append(b, function (err, offset) {
-    if(err) throw err
-    t.equal(offset, 64)
-    t.end()
   })
 
-})
+  tape('append a half block', function (t) {
+    blocks = reduce(blocks)
+    blocks.append(c.slice(0, 16), function (err, offset) {
+      if(err) throw err
+      t.equal(offset, 80)
+      t.end()
+    })
 
-tape('append a half block', function (t) {
-
-  blocks.append(c.slice(0, 16), function (err, offset) {
-    if(err) throw err
-    t.equal(offset, 80)
-    t.end()
   })
 
-})
-
-tape('read last block', function (t) {
-  blocks.read(64, 96, function (err, _c) {
-    if(err) throw err
-    console.log(_c)
-    t.deepEqual(_c.slice(0, 16), c.slice(0, 16))
-    t.end()
-  })
-})
-
-tape('append another half block', function (t) {
-  blocks.append(c.slice(0, 16), function (err, offset) {
-    if(err) throw err
-    t.equal(offset, 96)
-
+  tape('read last block', function (t) {
+    blocks = reduce(blocks)
     blocks.read(64, 96, function (err, _c) {
       if(err) throw err
       console.log(_c)
-      t.deepEqual(_c, c)
+      t.deepEqual(_c.slice(0, 16), c.slice(0, 16))
+      t.end()
+    })
+  })
+
+  tape('append another half block', function (t) {
+    blocks = reduce(blocks) // Blocks(File(filename, 32, 'a+'), 32)
+    blocks.append(c.slice(0, 16), function (err, offset) {
+      if(err) throw err
+      t.equal(offset, 96)
+
+      blocks.read(64, 96, function (err, _c) {
+        if(err) throw err
+        console.log(_c)
+        t.deepEqual(_c, c)
+        t.end()
+      })
+
+    })
+  })
+
+  tape('appending in parallel throws', function (t) {
+    blocks = reduce(blocks)
+    blocks.append(a, function (err, offset) {
+      if(err) throw err
+      t.equal(offset, 128)
       t.end()
     })
 
-  })
-})
-
-tape('appending in parallel throws', function (t) {
-  blocks.append(a, function (err, offset) {
-    if(err) throw err
-    t.equal(offset, 128)
-    t.end()
-  })
-
-  t.throws(function () {
-    blocks.append(b, function (err, offset) {
-      t.fail('should never be called')
+    t.throws(function () {
+      blocks.append(b, function (err, offset) {
+        t.fail('should never be called')
+      })
     })
+
   })
 
-})
-
-tape('read in parallel with append', function (t) {
-  blocks.offset.once(function (o) {
-    blocks.append(c, function (err, _o) {
-      t.equal(160, _o)
-      t.end()
+  tape('read in parallel with append', function (t) {
+    store = {} //clear the cache
+    blocks.offset.once(function (o) {
+      blocks.append(c, function (err, _o) {
+        t.equal(160, _o)
+        t.end()
+      })
+      blocks.read(o, o+16, function (err, buf) {
+        if(err) throw err
+        t.deepEqual(buf, c.slice(0, 16))
+      })
     })
-    blocks.read(o, o+16, function (err, buf) {
+
+  })
+
+
+  tape('append half block, then overlapping block', function (t) {
+    blocks = reduce(blocks)
+    blocks.append(e, function (err, offset) {
       if(err) throw err
-      t.deepEqual(buf, c.slice(0, 16))
-    })
-  })
-
-})
-
-
-tape('append half block, then overlapping block', function (t) {
-  blocks.append(e, function (err, offset) {
-    if(err) throw err
-    t.equal(offset, 184)
-    blocks.read(144, 176, function (err, data) {
-      if(err) throw err
-      console.log(err, data)
-      blocks.append(f, function (err, offset) {
-        blocks.read(176, 180, function (err, data) {
-          if(err) throw err
-          console.log(err, data)
-          if(err) throw err
-          t.equal(offset, 248)
-          t.end()
+      t.equal(offset, 184)
+      blocks.read(144, 176, function (err, data) {
+        if(err) throw err
+        console.log(err, data)
+        store = {}
+        blocks.append(f, function (err, offset) {
+          blocks.read(176, 180, function (err, data) {
+            if(err) throw err
+            console.log(err, data)
+            if(err) throw err
+            t.equal(offset, 248)
+            console.log(store)
+            t.end()
+          })
         })
       })
     })
   })
-})
+
+
+
+}
+
+if(!module.parent) {
+  var filename = '/tmp/test_block-reader_'+Date.now()
+  module.exports(function (b) {
+    return b ? b : Blocks(File(filename, 32, 'a+'), 32)
+  })
+}
+
+
+
+
+
+
 
 
