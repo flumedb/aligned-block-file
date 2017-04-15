@@ -17,7 +17,7 @@ function assertInteger (a) {
 var Cache = require('hashlru')
 
 module.exports = function (file, block_size, cache) {
-  var cbs = [], br
+  var cbs = [], br, writing = 0
   cache = cache || Cache(1000)
 
   function get(i, cb) {
@@ -59,11 +59,12 @@ module.exports = function (file, block_size, cache) {
           var buffer = bufs.length == 1 ? bufs[0] : Buffer.concat(bufs)
           if(!buffer.length)
             return cb(new Error('read an empty buffer at:'+start + ' to ' + end + '\n'+
-    JSON.stringify({
-      start: start, end: end, i:i,
-      bytes_read: bytes_read,
-      bufs: bufs
-    })))
+              JSON.stringify({
+                start: start, end: end, i:i,
+                bytes_read: bytes_read,
+                bufs: bufs
+              }))
+            )
           cb(null, buffer, bytes_read)
         }
       })
@@ -71,6 +72,15 @@ module.exports = function (file, block_size, cache) {
 
   }
 
+  //start by reading the end of the last block.
+  //this must always be kept in memory.
+//  var offset = Obv()
+//  file.offset.once(function (size) {
+//    get(~~(size/block_size], function (err, last) {
+//      //
+//    })
+//  })
+//
   return br = {
     read: read,
     readUInt32BE: function (start, cb) {
@@ -87,46 +97,53 @@ module.exports = function (file, block_size, cache) {
     append: function (buf, cb) {
       //write to the end of the file.
       //if successful, copy into cache.
+      if(writing++) throw new Error('already appending to this file')
       file.offset.once(function (_offset) {
 
         var start = _offset
         var b_start = 0
         var i = ~~(start/block_size)
-        while(b_start < buf.length) { //start < _offset+buf.length) {
-          var block_start = i*block_size
-          var b = cache.get(i)
-          if(null == b) {
-            b = new Buffer(block_size)
-            b.fill(0)
-            cache.set(i, b)
-          }
-          //including if set in above if...
-          if(Buffer.isBuffer(b)) {
-              var len = Math.min(block_size - (start - block_start), block_size)
-              buf.copy(b, start - block_start, b_start, b_start + len)
-              start += len
-              b_start += len
-          }
-          else if(Array.isArray(cbs[i]))
-            throw new Error('should never happen: new block should be initialized, before a read ever happens')
-          else
-            start += block_size
+        if(i*block_size < _offset) //usually true, unless file length is multiple of block_size
+          get(i, function (err) { //this will add the last block to the cache.
+            if(err) cb(explain(err, 'precache before append failed'))
+            else next()
+          })
+        else next()
 
-          i++
+        function next () {
+          while(b_start < buf.length) { //start < _offset+buf.length) {
+            var block_start = i*block_size
+            var b = cache.get(i)
+            if(null == b) {
+              b = new Buffer(block_size)
+              b.fill(0)
+              cache.set(i, b)
+            }
+            //including if set in above if...
+            if(Buffer.isBuffer(b)) {
+                var len = Math.min(block_size - (start - block_start), block_size)
+                buf.copy(b, start - block_start, b_start, b_start + len)
+                start += len
+                b_start += len
+            }
+            else if(Array.isArray(cbs[i]))
+              throw new Error('should never happen: new block should be initialized, before a read ever happens')
+            else {
+              start += block_size
+            }
+
+            i++
+          }
+
+          file.append(buf, function (err, offset) {
+            if(err) return cb(err)
+            writing = 0
+            cb(null, offset)
+          })
         }
-
-        file.append(buf, function (err, offset) {
-          if(err) return cb(err)
-          cb(null, offset)
-        })
       })
     }
   }
 }
-
-
-
-
-
 
 
