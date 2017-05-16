@@ -28,6 +28,7 @@ module.exports = function (file, block_size, flags) {
 
         var buf = new Buffer(block_size)
         buf.fill(0) //security
+
         fs.read(fd.value, buf, 0, block_size, i*block_size, function (err, bytes_read) {
           if(err) cb(err)
           else if(
@@ -50,6 +51,9 @@ module.exports = function (file, block_size, flags) {
     append: function (buf, cb) {
       if(writing++) throw new Error('already writing to this file')
       fd.once(function (_fd) {
+        if('object' === typeof _fd) {
+          return cb(_fd)
+        }
         offset.once(function (_offset) {
           fs.write(_fd, buf, 0, buf.length, _offset, function (err, written) {
             writing = 0
@@ -63,12 +67,6 @@ module.exports = function (file, block_size, flags) {
     }
   }
 }
-
-
-
-
-
-
 
 
 
