@@ -74,21 +74,28 @@ module.exports = function (file, block_size, cache) {
 
   //start by reading the end of the last block.
   //this must always be kept in memory.
-//  var offset = Obv()
-//  file.offset.once(function (size) {
-//    get(~~(size/block_size], function (err, last) {
-//      //
-//    })
-//  })
-//
+
   return br = {
     read: read,
     readUInt32BE: function (start, cb) {
-      //TODO: avoid creating a buffer when not necessary?
-      read(start, start+4, function (err, buf, bytes_read) {
-        if(err) return cb(err)
-        cb(null, buf.readUInt32BE(0))
-      })
+      var i = Math.floor(start/block_size)
+      var _i = start%block_size
+
+      //if the UInt32BE aligns with in a block
+      //read directly and it's 3x faster.
+      if(_i < block_size - 4)
+        get(i, function (err, block) {
+          if(err) return cb(err)
+          var value = block.readUInt32BE(start%block_size)
+          cb(null, value)
+        })
+      //but handle overlapping reads this easier way
+      //instead of messing around with bitwise ops
+      else
+        read(start, start+4, function (err, buf, bytes_read) {
+          if(err) return cb(err)
+          cb(null, buf.readUInt32BE(0))
+        })
     },
     size: file && file.size,
     offset: file && file.offset,
@@ -145,5 +152,4 @@ module.exports = function (file, block_size, cache) {
     }
   }
 }
-
 
