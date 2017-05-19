@@ -35,7 +35,12 @@ module.exports = function (reduce) {
     blocks.append(a, function (err, offset) {
       if(err) throw err
       t.equal(offset, 32)
-      t.end()
+      blocks.read(0, 33, function (err, over, bytes) {
+        t.ok(err)
+        t.equal(bytes, 0)
+        t.end()
+      })
+
     })
 
   })
@@ -63,7 +68,8 @@ module.exports = function (reduce) {
 
   tape('read last block', function (t) {
     blocks = reduce(blocks)
-    blocks.read(64, 96, function (err, _c) {
+    blocks.read(64, 80, function (err, _c) {
+      console.log(blocks.offset.value)
       if(err) throw err
       console.log(_c)
       t.deepEqual(_c.slice(0, 16), c.slice(0, 16))
@@ -111,8 +117,7 @@ module.exports = function (reduce) {
         t.end()
       })
       blocks.read(o, o+16, function (err, buf) {
-        if(err) throw err
-        t.deepEqual(buf, c.slice(0, 16))
+        t.ok(err)
       })
     })
 
@@ -142,7 +147,24 @@ module.exports = function (reduce) {
     })
   })
 
+  tape('truncate', function (t) {
+    blocks = reduce(blocks)
+    blocks.truncate(64, function (err, len) {
+      if(err) throw err
+      t.equal(blocks.offset.value, 64)
+      t.equal(len, 64)
 
+      blocks.read(0, 64, function (err, ab) {
+        t.deepEqual(ab, Buffer.concat([a, b]))
+        blocks.read(64, 96, function (err, _c, bytes) {
+          t.ok(err)
+          t.equal(bytes, 0)
+          t.equal(_c, null)
+          t.end()
+        })
+      })
+    })
+  })
 
 }
 
@@ -152,8 +174,6 @@ if(!module.parent) {
     return b ? b : Blocks(File(filename, 32, 'a+'), 32)
   })
 }
-
-
 
 
 
