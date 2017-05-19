@@ -37,6 +37,10 @@ append `buf` to the file.
 this must not be called again until the previous call has returned.
 updated values for size and offset will be triggered immediately before the `cb` is called.
 
+### truncate(length, cb)
+
+shorten the file to `length` removing anything after that point.
+
 ## License
 
 MIT
