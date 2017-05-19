@@ -51,9 +51,8 @@ module.exports = function (file, block_size, flags) {
     append: function (buf, cb) {
       if(writing++) throw new Error('already writing to this file')
       fd.once(function (_fd) {
-        if('object' === typeof _fd) {
+        if('object' === typeof _fd)
           return cb(_fd)
-        }
         offset.once(function (_offset) {
           fs.write(_fd, buf, 0, buf.length, _offset, function (err, written) {
             writing = 0
@@ -64,11 +63,24 @@ module.exports = function (file, block_size, flags) {
           })
         })
       })
+    },
+    truncate: function (len, cb) {
+      if(writing++) throw new Error('already writing, cannot truncate')
+      fd.once(function (_fd) {
+        if('object' === typeof _fd)
+          return cb(_fd)
+        offset.once(function (_offset) {
+          if(_offset <= len) return cb()
+          fs.ftruncate(_fd, len, function (err) {
+            if(err) cb(err)
+            else {
+              offset.set(len)
+              cb(null, offset.value)
+            }
+          })
+        })
+      })
     }
   }
 }
-
-
-
-
 

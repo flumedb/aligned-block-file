@@ -40,14 +40,15 @@ module.exports = function (file, block_size, cache) {
     assertInteger(start);assertInteger(end)
     //check if start & end are part of the same buffer
     var i = ~~(start/block_size)
-
+    if(file && end > file.offset.value)
+      return cb(new Error('past end'), null, 0)
     var bufs = []
     ;(function next (i) {
       var block_start = i*block_size
       get(i, function (err, block, bytes_read) {
         if(err) return cb(err)
         //this is not right.
-        if(bytes_read === 0) return cb(new Error('past end'), block, bytes_read)
+        if(bytes_read === 0) return cb(new Error('past end'), null, bytes_read)
 
         var read_start = start - block_start
         var read_end = Math.min(end - block_start, block_size)
@@ -149,6 +150,11 @@ module.exports = function (file, block_size, cache) {
           })
         }
       })
+    },
+    //we arn't specifically clearing the buffers,
+    //but they should get updated anyway.
+    truncate: file ? file.truncate : function (len, cb) {
+      cb()
     }
   }
 }
