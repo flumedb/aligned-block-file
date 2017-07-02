@@ -10,7 +10,8 @@
   "dependencies": {
     "hashlru": "^2.1.0",
     "mkdirp": "^0.5.1",
-    "obv": "0.0.0"
+    "obv": "0.0.0",
+    "uint48be": "^1.0.0"
   },
   "devDependencies": {
     "looper": "^4.0.0",

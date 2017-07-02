@@ -1,4 +1,6 @@
 var fs = require('fs')
+var uint48be = require('uint48be')
+
 /*
   Represent a file, as a table of buffers.
   copy from a range in the file into a buffer
@@ -76,28 +78,37 @@ module.exports = function (file, block_size, cache) {
   //start by reading the end of the last block.
   //this must always be kept in memory.
 
-  return br = {
-    read: read,
-    readUInt32BE: function (start, cb) {
+  function readInteger(width, reader) {
+    return function (start, cb) {
       var i = Math.floor(start/block_size)
       var _i = start%block_size
 
       //if the UInt32BE aligns with in a block
       //read directly and it's 3x faster.
-      if(_i < block_size - 4)
+      if(_i < block_size - width)
         get(i, function (err, block) {
           if(err) return cb(err)
-          var value = block.readUInt32BE(start%block_size)
+          var value = reader(block, start%block_size)
           cb(null, value)
         })
       //but handle overlapping reads this easier way
       //instead of messing around with bitwise ops
       else
-        read(start, start+4, function (err, buf, bytes_read) {
+        read(start, start+width, function (err, buf, bytes_read) {
           if(err) return cb(err)
-          cb(null, buf.readUInt32BE(0))
+          cb(null, reader(buf, 0))
         })
-    },
+    }
+  }
+
+  return br = {
+    read: read,
+    readUInt32BE: readInteger(4, function(b, offset) {
+      return b.readUInt32BE(offset)
+    }),
+    readUInt48BE: readInteger(6, function(b, offset) {
+      return uint48be.decode(b, offset)
+    }),
     size: file && file.size,
     offset: file && file.offset,
     //starting to realize: what I really need is just a lib for
