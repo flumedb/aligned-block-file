@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "hashlru": "^2.1.0",
+    "int53": "^0.2.4",
     "mkdirp": "^0.5.1",
     "obv": "0.0.0",
     "uint48be": "^1.0.0"

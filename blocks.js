@@ -1,5 +1,6 @@
 var fs = require('fs')
 var uint48be = require('uint48be')
+var int53 = require('int53')
 
 /*
   Represent a file, as a table of buffers.
@@ -108,6 +109,9 @@ module.exports = function (file, block_size, cache) {
     }),
     readUInt48BE: readInteger(6, function(b, offset) {
       return uint48be.decode(b, offset)
+    }),
+    readUInt64BE: readInteger(8, function(b, offset) {
+      return int53.readUInt64BE(b, offset)
     }),
     size: file && file.size,
     offset: file && file.offset,
