@@ -39,7 +39,7 @@ module.exports = function (file, block_size, cache) {
   function read(start, end, cb) {
     assertInteger(start);assertInteger(end)
     //check if start & end are part of the same buffer
-    var i = ~~(start/block_size)
+    var i = Math.floor(start/block_size)
     if(file && end > file.offset.value)
       return cb(new Error('past end'), null, 0)
     var bufs = []
