@@ -12,7 +12,7 @@
     "int53": "^0.2.4",
     "mkdirp": "^0.5.1",
     "obv": "0.0.0",
-    "uint48be": "^1.0.0"
+    "uint48be": "^1.0.1"
   },
   "devDependencies": {
     "looper": "^4.0.0",
