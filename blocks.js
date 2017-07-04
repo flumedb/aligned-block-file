@@ -125,7 +125,7 @@ module.exports = function (file, block_size, cache) {
 
         var start = _offset
         var b_start = 0
-        var i = ~~(start/block_size)
+        var i = Math.floor(start/block_size)
         if(i*block_size < _offset) //usually true, unless file length is multiple of block_size
           get(i, function (err) { //this will add the last block to the cache.
             if(err) cb(explain(err, 'precache before append failed'))
