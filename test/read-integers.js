@@ -64,20 +64,21 @@ tape('readUInt64BE', function (t) {
   cache.set(4, new Buffer.from('ffffffffaaaaaaaa', 'hex'))
   var blocks = Blocks(null, 8, cache)
 
-  t.plan(4)
+  t.plan(5)
   test(0, 2) // aligned
   test(1, 513) //unaligned
   test(16, Math.pow(2,53)-1) // maxint
   test(28, Math.pow(2,53)-1) // maxint, unaligned
+  test(29, NaN, true) // overflow!
 
-  function test(offset, expected) {
+  function test(offset, expected, expectError) {
     blocks.readUInt64BE(offset, function (err, n) {
-      if (err) throw err
-      t.equal(n, expected)
+      if (err && !expectError) throw err
+      if (!err && expectError) throw new Error('Expected error dir not occur')
+      if (!err)
+        t.equal(n, expected)
+      else
+        t.equal(isNaN(n), true)
     })
   }
 })
-
-
-
-

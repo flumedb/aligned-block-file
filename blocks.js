@@ -97,7 +97,8 @@ module.exports = function (file, block_size, cache) {
       else
         read(start, start+width, function (err, buf, bytes_read) {
           if(err) return cb(err)
-          cb(null, reader(buf, 0))
+          var value = reader(buf, 0);
+          cb(isNaN(value) ? new Error('Number is too large') : null, value)
         })
     }
   }
@@ -111,7 +112,12 @@ module.exports = function (file, block_size, cache) {
       return uint48be.decode(b, offset)
     }),
     readUInt64BE: readInteger(8, function(b, offset) {
-      return int53.readUInt64BE(b, offset)
+      // int53.readUInt64BE will throw if number is too large
+      try {
+        return int53.readUInt64BE(b, offset)
+      } catch(err) {
+        return NaN;
+      }
     }),
     size: file && file.size,
     offset: file && file.offset,
