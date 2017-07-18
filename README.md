@@ -22,6 +22,17 @@ read a buffer from the file. If the range is already in the cache
 
 read a UInt32BE from the file. (`cb` may be sync, if the buffer is already in cache)
 
+### abf.readUInt48BE (start, cb)
+
+read a UInt48BE from the file. (`cb` may be sync, if the buffer is already in cache)
+
+### abf.readUInt64BE (start, cb)
+
+read a UInt64BE from the file, since javascript numbers are restricted to double
+this will only set the first 53 bits. Take care with your 53 bit int! if you use bitwise
+operations it will collapse back to 32 bit, you need to use `*2` instead of `<< 1`, etc.
+(`cb` may be sync, if the buffer is already in cache)
+
 ### abf.size
 
 an observable of the files size.
