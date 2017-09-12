@@ -44,7 +44,7 @@ module.exports = function (file, block_size, cache) {
     //check if start & end are part of the same buffer
     var i = Math.floor(start/block_size)
     if(file && end > file.offset.value)
-      return cb(new Error('past end'), null, 0)
+      return cb(new Error('past end:'+start+'-'+end+' < '+file.offset.value), null, 0)
     var bufs = []
     ;(function next (i) {
       var block_start = i*block_size
