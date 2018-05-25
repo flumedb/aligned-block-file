@@ -34,7 +34,10 @@ module.exports = function (file, block_size, cache) {
         var cb = cbs[i]
         cbs[i] = null
         if(!err) cache.set(i, buf)
-        while(cb.length) cb.shift()(err, buf, bytes_read)
+        var l = cb.length
+        for (var j = 0; j < cb.length; ++j)
+          cb[j](err, buf, bytes_read)
+        cb = cb.slice(l)
       })
     }
   }
@@ -69,11 +72,10 @@ module.exports = function (file, block_size, cache) {
                 bufs: bufs
               }))
             )
-          cb(null, buffer, bytes_read)
+          cb(null, buffer.toString(), bytes_read)
         }
       })
     })(i)
-
   }
 
   //start by reading the end of the last block.
@@ -97,7 +99,7 @@ module.exports = function (file, block_size, cache) {
       else
         read(start, start+width, function (err, buf, bytes_read) {
           if(err) return cb(err)
-          var value = reader(buf, 0);
+          var value = reader(new Buffer(buf), 0)
           cb(isNaN(value) ? new Error('Number is too large') : null, value)
         })
     }
