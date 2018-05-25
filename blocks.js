@@ -44,11 +44,41 @@ module.exports = function (file, block_size, cache) {
 
   function read(start, end, cb) {
     assertInteger(start);assertInteger(end)
-    //check if start & end are part of the same buffer
     var i = Math.floor(start/block_size)
     if(file && end > file.offset.value)
       return cb(new Error('past end:'+start+'-'+end+' < '+file.offset.value), null, 0)
-    var bufs = []
+
+    var block_start = i*block_size
+
+    get(i, function (err, block, bytes_read) {
+      if(err) return cb(err)
+      //this is not right.
+      if(bytes_read === 0) return cb(new Error('past end'), null, bytes_read)
+
+      var read_start = start - block_start
+      var read_end = Math.min(end - block_start, block_size)
+      var buffer = block.slice(read_start, read_end)
+      start += (read_end - read_start)
+
+      if (start < end) readRest(buffer, start, end, cb)
+      else {
+        if(!buffer.length)
+          return cb(new Error('read an empty buffer at:'+start + ' to ' + end + '\n'+
+              JSON.stringify({
+                start: start, end: end, i:i,
+                bytes_read: bytes_read,
+                buffer: buffer
+              }))
+            )
+          cb(null, buffer.toString(), bytes_read)
+      }
+    })
+  }
+
+  function readRest(firstBuffer, start, end, cb) {
+    //check if start & end are part of the same buffer
+    var i = Math.floor(start/block_size)
+    var bufs = [firstBuffer]
     ;(function next (i) {
       var block_start = i*block_size
       get(i, function (err, block, bytes_read) {
