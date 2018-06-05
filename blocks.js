@@ -24,8 +24,9 @@ module.exports = function (file, block_size, cache) {
   cache = cache || Cache(1000)
 
   function get(i, cb) {
-    if(Buffer.isBuffer(cache.get(i)))
-      cb(null, cache.get(i), block_size)
+    var c = cache.get(i)
+    if(Buffer.isBuffer(c))
+      cb(null, c, block_size)
     else if(Array.isArray(cbs[i]))
       cbs[i].push(cb)
     else {
