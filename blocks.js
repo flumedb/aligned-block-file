@@ -35,10 +35,8 @@ module.exports = function (file, block_size, cache) {
         var cb = cbs[i]
         cbs[i] = null
         if(!err) cache.set(i, buf)
-        var l = cb.length
         for (var j = 0; j < cb.length; ++j)
           cb[j](err, buf, bytes_read)
-        cb = cb.slice(l)
       })
     }
   }
