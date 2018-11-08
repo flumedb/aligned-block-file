@@ -33,12 +33,13 @@ module.exports = function (file, block_size, flags) {
           if(err) cb(err)
           else if(
             //if bytes_read is wrong
+            i < max &&
             buf.length !== bytes_read &&
             //unless this is the very last block and it is incomplete.
             !((i*block_size + bytes_read) == offset.value)
           )
             cb(new Error(
-              'aligned-block-file/flie.get: did not read whole block, expected length:'+
+              'aligned-block-file/file.get: did not read whole block, expected length:'+
               block_size+' but got:'+bytes_read
             ))
           else
