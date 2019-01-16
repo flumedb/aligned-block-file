@@ -20,11 +20,11 @@ tape('readUInt32BE', function (t) {
 
   t.plan(4)
   test(0, 2) // aligned
-  test(1, 513) //unaligned
-  test(8, Math.pow(2,32)-1) // maxint
-  test(14, Math.pow(2,32)-1) // maxint, unaligned
+  test(1, 513) // unaligned
+  test(8, Math.pow(2, 32) - 1) // maxint
+  test(14, Math.pow(2, 32) - 1) // maxint, unaligned
 
-  function test(offset, expected) {
+  function test (offset, expected) {
     blocks.readUInt32BE(offset, function (err, n) {
       if (err) throw err
       t.equal(n, expected)
@@ -43,11 +43,11 @@ tape('readUInt48BE', function (t) {
 
   t.plan(4)
   test(0, 2) // aligned
-  test(1, 513) //unaligned
-  test(12, Math.pow(2,48)-1) // maxint
-  test(21, Math.pow(2,48)-1) // maxint, unaligned
+  test(1, 513) // unaligned
+  test(12, Math.pow(2, 48) - 1) // maxint
+  test(21, Math.pow(2, 48) - 1) // maxint, unaligned
 
-  function test(offset, expected) {
+  function test (offset, expected) {
     blocks.readUInt48BE(offset, function (err, n) {
       if (err) throw err
       t.equal(n, expected)
@@ -66,19 +66,16 @@ tape('readUInt64BE', function (t) {
 
   t.plan(5)
   test(0, 2) // aligned
-  test(1, 513) //unaligned
-  test(16, Math.pow(2,53)-1) // maxint
-  test(28, Math.pow(2,53)-1) // maxint, unaligned
+  test(1, 513) // unaligned
+  test(16, Math.pow(2, 53) - 1) // maxint
+  test(28, Math.pow(2, 53) - 1) // maxint, unaligned
   test(29, NaN, true) // overflow!
 
-  function test(offset, expected, expectError) {
+  function test (offset, expected, expectError) {
     blocks.readUInt64BE(offset, function (err, n) {
       if (err && !expectError) throw err
       if (!err && expectError) throw new Error('Expected error dir not occur')
-      if (!err)
-        t.equal(n, expected)
-      else
-        t.equal(isNaN(n), true)
+      if (!err) { t.equal(n, expected) } else { t.equal(isNaN(n), true) }
     })
   }
 })

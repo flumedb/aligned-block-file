@@ -28,9 +28,9 @@ tape('splice', function (t) {
   cache.set(2, c)
   bufs.offset = 96
 
-  function test(start, end, expected) {
+  function test (start, end, expected) {
     bufs.read(start, end, function (err, actual) {
-      if(err) throw err
+      if (err) throw err
       t.deepEqual(actual, expected)
     })
   }
@@ -53,7 +53,7 @@ tape('splice', function (t) {
 })
 
 tape('read file', function (t) {
-  var file = '/tmp/test_block-reader_'+Date.now()
+  var file = '/tmp/test_block-reader_' + Date.now()
   fs.appendFileSync(file, a)
   fs.appendFileSync(file, b)
   fs.appendFileSync(file, c)
@@ -61,9 +61,9 @@ tape('read file', function (t) {
 
   t.plan(7)
 
-  function test(start, end, expected) {
+  function test (start, end, expected) {
     bufs.read(start, end, function (err, actual) {
-      if(err) throw err
+      if (err) throw err
       t.deepEqual(actual, expected)
     })
   }
@@ -81,11 +81,10 @@ tape('read file', function (t) {
 
   test(16, 32 + 16, Buffer.concat([_a, _b]))
   test(32 + 16, 64 + 16, Buffer.concat([_b, _c]))
-
 })
 
 tape('read empty file', function (t) {
-  var file = '/tmp/test_block-reader_'+Date.now()
+  var file = '/tmp/test_block-reader_' + Date.now()
   var bufs = Blocks(File(file, 32, 'a+'), 32)
   bufs.read(0, 32, function (err, buf, bytes_read) {
     t.ok(err)
@@ -93,6 +92,3 @@ tape('read empty file', function (t) {
     t.end()
   })
 })
-
-
-

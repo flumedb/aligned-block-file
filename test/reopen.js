@@ -1,4 +1,4 @@
-var filename = '/tmp/test_block-reader_'+Date.now()
+var filename = '/tmp/test_block-reader_' + Date.now()
 var Blocks = require('../blocks')
 var File = require('../file')
 
