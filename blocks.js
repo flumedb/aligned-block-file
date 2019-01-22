@@ -178,7 +178,8 @@ module.exports = function (file, block_size, cache) {
     //but they should get updated anyway.
     truncate: file ? file.truncate : function (len, cb) {
       cb()
-    }
+    },
+    write: file.write
   }
 }
 
