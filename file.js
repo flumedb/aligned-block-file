@@ -81,6 +81,11 @@ module.exports = function (file, block_size, flags) {
           })
         })
       })
+    },
+    write: (buf, pos, cb) => {
+      fd.once((_fd) => {
+        fs.write(_fd, buf, 0, buf.length, pos, cb)
+      })
     }
   }
 }
