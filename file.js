@@ -83,8 +83,20 @@ module.exports = function (file, block_size, flags) {
       })
     },
     write: (buf, pos, cb) => {
+      if(writing++) throw new Error('already writing, cannot write')
       fd.once((_fd) => {
-        fs.write(_fd, buf, 0, buf.length, pos, cb)
+        console.log('BEFORE', fs.readFileSync(_fd))
+
+        if('object' === typeof _fd)
+          return cb(_fd)
+
+        fs.write(_fd, buf, 0, buf.length, pos, (err, written, buffer) => {
+          writing = 0
+          if(err) return cb(err)
+          if(written !== buf.length) return cb(new Error('wrote less bytes than expected:'+written+', but wanted:'+buf.length))
+          console.log('AFTER', fs.readFileSync(_fd))
+          cb(err)
+        })
       })
     }
   }

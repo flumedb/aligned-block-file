@@ -179,7 +179,11 @@ module.exports = function (file, block_size, cache) {
     truncate: file ? file.truncate : function (len, cb) {
       cb()
     },
-    write: file.write
+    write: (buf, pos, cb) => {
+      const i = Math.floor(pos/block_size)
+      cache.set(i, buf)
+      file.write(buf, pos, cb)
+    }
   }
 }
 

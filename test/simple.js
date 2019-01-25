@@ -26,6 +26,7 @@ tape('splice', function (t) {
   cache.set(0, a)
   cache.set(1, b)
   cache.set(2, c)
+  //bufs.write(2, c)
   bufs.offset = 96
 
   function test(start, end, expected) {
