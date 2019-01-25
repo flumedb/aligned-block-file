@@ -20,7 +20,6 @@ function assertInteger (a) {
 var Cache = require('hashlru')
 
 module.exports = function (file, block_size, cache) {
-
   var cbs = [], br, writing = 0
   cache = cache || Cache(1000)
 
@@ -64,6 +63,14 @@ module.exports = function (file, block_size, cache) {
         if(start < end) next(i+1)
         else {
           var buffer = bufs.length == 1 ? bufs[0] : Buffer.concat(bufs)
+          if(!buffer.length)
+            return cb(new Error('read an empty buffer at:'+start + ' to ' + end + '\n'+
+              JSON.stringify({
+                start: start, end: end, i:i,
+                bytes_read: bytes_read,
+                bufs: bufs
+              }))
+            )
           cb(null, buffer, bytes_read)
         }
       })
