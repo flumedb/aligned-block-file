@@ -4,12 +4,11 @@ var Obv = require('obv')
 var path = require('path')
 
 module.exports = function (file, block_size, flags) {
-  var self
   var fd = Obv()
   var offset = Obv()
-  //fs.openSync(file, flags || 'r+')
   mkdirp(path.dirname(file), function () {
-    fs.open(file, flags || 'r+', function (err, _fd) {
+    fs.open(file, flags || 'a+', function (err, _fd) {
+      console.log('OPENED FILE FOR APPEND')
       fd.set(_fd || err)
       fs.stat(file, function (err, stat) {
         offset.set(err ? 0 : stat.size)
@@ -19,7 +18,7 @@ module.exports = function (file, block_size, flags) {
 
   var writing = 0
 
-  return self = {
+  return {
     get: function (i, cb) {
       offset.once(function (_offset) {
         var max = ~~(_offset / block_size)
@@ -83,19 +82,14 @@ module.exports = function (file, block_size, flags) {
       })
     },
     write: (buf, pos, cb) => {
-      if(writing++) throw new Error('already writing, cannot write')
-      fd.once((_fd) => {
-        console.log('BEFORE', fs.readFileSync(_fd))
-
-        if('object' === typeof _fd)
-          return cb(_fd)
-
-        fs.write(_fd, buf, 0, buf.length, pos, (err, written, buffer) => {
-          writing = 0
-          if(err) return cb(err)
-          if(written !== buf.length) return cb(new Error('wrote less bytes than expected:'+written+', but wanted:'+buf.length))
-          console.log('AFTER', fs.readFileSync(_fd))
-          cb(err)
+      fd.once(() => {
+        fs.open(file, 'r+', function (err, writeFd) {
+          fs.write(writeFd, buf, 0, buf.length, pos, (err, written) => {
+            writing = 0
+            if(err) throw cb(err)
+            if(written !== buf.length) return cb(new Error('wrote less bytes than expected:'+written+', but wanted:'+buf.length))
+            cb(err)
+          })
         })
       })
     }
