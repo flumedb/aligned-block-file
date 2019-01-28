@@ -8,7 +8,6 @@ module.exports = function (file, block_size, flags) {
   var offset = Obv()
   mkdirp(path.dirname(file), function () {
     fs.open(file, flags || 'a+', function (err, _fd) {
-      console.log('OPENED FILE FOR APPEND')
       fd.set(_fd || err)
       fs.stat(file, function (err, stat) {
         offset.set(err ? 0 : stat.size)
