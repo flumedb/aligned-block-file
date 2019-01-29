@@ -181,7 +181,7 @@ module.exports = function (file, block_size, cache) {
     },
     write: (buf, pos, cb) => {
       const i = Math.floor(pos/block_size)
-      cache.set(i, buf)
+      cache.remove(i)
       file.write(buf, pos, cb)
     }
   }
