@@ -3,7 +3,7 @@ var looper = require('looper')
 function init(blocks, n, cb) {
   ;(function next (i) {
     if(i == n) return cb(null, blocks)
-    blocks.append(Buffer.alloc(10).fill(0), function (err) {
+    blocks.append(Buffer.alloc(10), function (err) {
       if(err) cb(err)
       else next(i + 1)
     })

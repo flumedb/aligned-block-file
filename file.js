@@ -26,8 +26,7 @@ module.exports = function (file, block_size, flags) {
         if(i > max)
           return cb(new Error('aligned-block-file/file.get: requested block index was greater than max, got:'+i+', expected less than or equal to:'+max))
 
-        var buf = new Buffer(block_size)
-        buf.fill(0) //security
+        var buf = Buffer.alloc(block_size)
 
         fs.read(fd.value, buf, 0, block_size, i*block_size, function (err, bytes_read) {
           if(err) cb(err)

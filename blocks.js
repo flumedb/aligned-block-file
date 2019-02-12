@@ -139,8 +139,7 @@ module.exports = function (file, block_size, cache) {
             var block_start = i*block_size
             var b = cache.get(i)
             if(null == b) {
-              b = new Buffer(block_size)
-              b.fill(0)
+              b = Buffer.alloc(block_size)
               cache.set(i, b)
             }
             //including if set in above if...

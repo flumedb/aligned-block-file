@@ -5,12 +5,9 @@ var File = require('../file')
 
 var tape = require('tape')
 
-var a = new Buffer(32)
-a.fill('a')
-var b = new Buffer(32)
-b.fill('b')
-var c = new Buffer(32)
-c.fill('c')
+var a = Buffer.alloc(32, 'a')
+var b = Buffer.alloc(32, 'b')
+var c = Buffer.alloc(32, 'c')
 
 function Cache () {
   var c = []
