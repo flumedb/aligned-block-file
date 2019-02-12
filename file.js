@@ -65,6 +65,28 @@ module.exports = function (file, block_size, flags) {
         })
       })
     },
+    /**
+     * Writes a buffer directly to a position in the file. This opens the file
+     * with another file descriptor so that the main file descriptor can just
+     * append and read without doing any positional writes.
+     *
+     * @param {buffer} buf - the data to write to the file
+     * @param {number} pos - position in the file to write the buffer
+     * @param {function} cb - callback that returns any error as an argument
+     */
+    write: (buf, pos, cb) => {
+      fd.once(() => {
+        fs.open(file, 'r+', function (err, writeFd) {
+          fs.write(writeFd, buf, 0, buf.length, pos, (err, written) => {
+            if (err == null && written !== buf.length) {
+              cb(new Error('wrote less bytes than expected:'+written+', but wanted:'+buf.length))
+            } else {
+              cb(err)
+            }
+          })
+        })
+      })
+    },
     truncate: function (len, cb) {
       if(writing++) throw new Error('already writing, cannot truncate')
       fd.once(function (_fd) {
