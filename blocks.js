@@ -176,7 +176,8 @@ module.exports = function (file, block_size, cache) {
     },
     /**
      * Writes a buffer directly to a position in the file.
-     * This wraps `file.write()` and removes the block cache.
+     * This wraps `file.write()` and removes the block cache after the file
+     * write finishes to avoid having the item re-cached during the write.
      *
      * @param {buffer} buf - the data to write to the file
      * @param {number} pos - position in the file to write the buffer
@@ -184,8 +185,10 @@ module.exports = function (file, block_size, cache) {
      */
     write: (buf, pos, cb) => {
       const i = Math.floor(pos/block_size)
-      cache.remove(i)
-      file.write(buf, pos, cb)
+      file.write(buf, pos, (err) => {
+        cache.remove(i)
+        cb(err)
+      })
     },
     //we arn't specifically clearing the buffers,
     //but they should get updated anyway.
