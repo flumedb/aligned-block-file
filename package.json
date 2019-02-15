@@ -11,7 +11,7 @@
     "hashlru": "^2.1.0",
     "int53": "^1.0.0",
     "mkdirp": "^0.5.1",
-    "obv": "0.0.1",
+    "obv": "github:fraction/obv#pass-this-rm",
     "uint48be": "^2.0.1"
   },
   "devDependencies": {

@@ -104,7 +104,22 @@ tape('overwrite previous data', function (t) {
         bufs.read(0, 32, function (err, bufB) {
           t.error(err)
           t.deepEqual(bufB, b)
-          t.end()
+          bufs.write(b, 1, function (err) {
+            t.ok(err, 'error if writing past last offset')
+
+            // let's make a race condition!
+            // first we'll start writing...
+            bufs.write(c, 0, function (err) {
+              t.error(err)
+            })
+
+            // and we'll start reading before it's done
+            bufs.read(0, 32, (err, bufC) => {
+              t.error(err)
+              t.deepEqual(bufC, c)
+              t.end()
+            })
+          })
         })
       })
     })
