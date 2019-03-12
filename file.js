@@ -17,18 +17,18 @@ module.exports = function (file, block_size, flags) {
     })
   })
 
+  // This variable *only* tracks appends, not positional writes.
   var appending = 0
 
   return {
     get: function (i, cb) {
       offset.once(function (_offset) {
-        writing(function (_writing) {
+        writing(function (_writing, rm) {
           if (_writing === true) {
             return
           } else {
-            this()
+            rm()
           }
-
 
           var max = ~~(_offset / block_size)
           if(i > max)
@@ -91,11 +91,11 @@ module.exports = function (file, block_size, flags) {
           return cb(new Error(`cannot write past offset: ${endPos} > ${_offset}`))
         }
 
-        writing(function (_writing) {
+        writing(function (_writing, rm) {
           if (_writing === true) {
             return
           } else {
-            this()
+            rm()
             writing.set(true)
           }
 
