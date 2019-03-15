@@ -23,11 +23,17 @@ module.exports = function (file, block_size, flags) {
   return {
     get: function (i, cb) {
       offset.once(function (_offset) {
-        writing(function (_writing, rm) {
+        let shouldRemove = false
+        const rm = writing(function (_writing) {
+          if (shouldRemove === true) {
+            return rm()
+          }
+
+
           if (_writing === true) {
             return
           } else {
-            rm()
+            shouldRemove = true
           }
 
           var max = ~~(_offset / block_size)
@@ -91,12 +97,17 @@ module.exports = function (file, block_size, flags) {
           return cb(new Error(`cannot write past offset: ${endPos} > ${_offset}`))
         }
 
-        writing(function (_writing, rm) {
+        let shouldRemove = false
+        const rm = writing(function (_writing) {
+          if (shouldRemove === true) {
+            return rm()
+          }
+
           if (_writing === true) {
             return
           } else {
-            rm()
             writing.set(true)
+            shouldRemove = true
           }
 
           fs.open(file, 'r+', function (err, writeFd) {
