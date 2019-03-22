@@ -26,7 +26,7 @@ module.exports = function (file, block_size, flags) {
         let shouldRemove = false
         const rm = writing(function (_writing) {
           if (shouldRemove === true) {
-            return rm()
+            return setImmediate(() => rm())
           }
 
 
@@ -100,14 +100,14 @@ module.exports = function (file, block_size, flags) {
         let shouldRemove = false
         const rm = writing(function (_writing) {
           if (shouldRemove === true) {
-            return rm()
+            return setImmediate(() => rm())
           }
 
           if (_writing === true) {
             return
           } else {
-            writing.set(true)
             shouldRemove = true
+            writing.set(true)
           }
 
           fs.open(file, 'r+', function (err, writeFd) {
