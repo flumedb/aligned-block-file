@@ -117,7 +117,7 @@ module.exports = function (file, block_size, flags) {
       })
     },
     truncate: function (len, cb) {
-      if(appending++) throw new Error('already appending, cannot truncate')
+      if(appending) throw new Error('already appending, cannot truncate')
       offset.once(function (_offset) {
         if(_offset <= len) return cb()
         fs.ftruncate(fd, len, function (err) {
@@ -131,4 +131,5 @@ module.exports = function (file, block_size, flags) {
     }
   }
 }
+
 
