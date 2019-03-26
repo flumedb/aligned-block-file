@@ -93,7 +93,7 @@ tape('read empty file', function (t) {
 
 tape('overwrite previous data', function (t) {
   var file = '/tmp/test_block-reader_'+Date.now()
-  var bufs = Blocks(File(file, 32, 'a+'), 32)
+  var bufs = Blocks(File(file, 32, 'r+'), 32)
   bufs.append(a, function (err) {
     t.error(err)
     bufs.read(0, 32, function (err, bufA) {
