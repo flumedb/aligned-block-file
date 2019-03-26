@@ -5,8 +5,7 @@ var path = require('path')
 
 module.exports = function (file, block_size, flags) {
   flags = flags || 'r+'
-  //var fd = Obv(),
-  var __fd
+  var fd
   var offset = Obv()
   var writing = false
   var waitingForWrite = []
@@ -25,8 +24,7 @@ module.exports = function (file, block_size, flags) {
     fs.open(file, 'a', function (_, _fd) {
       fs.close(_fd, function (_) {
         fs.open(file, flags, function (err, _fd) {
-          //fd.set(_fd || err)
-          __fd = _fd
+          fd = _fd
           fs.stat(file, function (err, stat) {
             offset.set(err ? 0 : stat.size)
           })
@@ -48,7 +46,7 @@ module.exports = function (file, block_size, flags) {
 
           var buf = Buffer.alloc(block_size)
 
-          fs.read(__fd, buf, 0, block_size, i*block_size, function (err, bytes_read) {
+          fs.read(fd, buf, 0, block_size, i*block_size, function (err, bytes_read) {
             if(err) cb(err)
             else if(
               //if bytes_read is wrong
@@ -74,7 +72,7 @@ module.exports = function (file, block_size, flags) {
     append: function (buf, cb) {
       if(appending++) throw new Error('already appending to this file')
         offset.once(function (_offset) {
-          fs.write(__fd, buf, 0, buf.length, _offset, function (err, written) {
+          fs.write(fd, buf, 0, buf.length, _offset, function (err, written) {
             appending = 0
             if(err) return cb(err)
             if(written !== buf.length) return cb(new Error('wrote less bytes than expected:'+written+', but wanted:'+buf.length))
@@ -104,7 +102,7 @@ module.exports = function (file, block_size, flags) {
 
         function onReady (_writing) {
           writing = true
-          fs.write(__fd, buf, 0, buf.length, pos, (err, written) => {
+          fs.write(fd, buf, 0, buf.length, pos, (err, written) => {
             readyToWrite()
             if (err == null && written !== buf.length) {
               cb(new Error('wrote less bytes than expected:'+written+', but wanted:'+buf.length))
@@ -122,7 +120,7 @@ module.exports = function (file, block_size, flags) {
       if(appending++) throw new Error('already appending, cannot truncate')
       offset.once(function (_offset) {
         if(_offset <= len) return cb()
-        fs.ftruncate(__fd, len, function (err) {
+        fs.ftruncate(fd, len, function (err) {
           if(err) cb(err)
           else {
             offset.set(len)
@@ -133,6 +131,4 @@ module.exports = function (file, block_size, flags) {
     }
   }
 }
-
-
 
