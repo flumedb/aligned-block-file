@@ -4,6 +4,7 @@ var Obv = require('obv')
 var path = require('path')
 
 module.exports = function (file, block_size, flags) {
+  flags = flags || 'r+'
   var fd = Obv(), __fd
   var offset = Obv()
   var writing = false
@@ -16,13 +17,19 @@ module.exports = function (file, block_size, flags) {
       waitingForWrite.shift()()
   }
 
-  //fs.openSync(file, flags || 'r+')
   mkdirp(path.dirname(file), function () {
-    fs.open(file, flags || 'r+', function (err, _fd) {
-      fd.set(_fd || err)
-      __fd = _fd
-      fs.stat(file, function (err, stat) {
-        offset.set(err ? 0 : stat.size)
+    //r+ opens the file for reading and writing, but errors if file does not exist.
+    //to open the file for reading and writing and not error if it does not exist.
+    //we need to open and close the file for append first.
+    fs.open(file, 'a', function (_, _fd) {
+      fs.close(_fd, function (_) {
+        fs.open(file, flags, function (err, _fd) {
+          fd.set(_fd || err)
+          __fd = _fd
+          fs.stat(file, function (err, stat) {
+            offset.set(err ? 0 : stat.size)
+          })
+        })
       })
     })
   })
@@ -65,9 +72,6 @@ module.exports = function (file, block_size, flags) {
     size: function () { return offset.value },
     append: function (buf, cb) {
       if(appending++) throw new Error('already appending to this file')
-//      fd.once(function (_fd) {
-//        if('object' === typeof _fd)
-//          return cb(_fd)
         offset.once(function (_offset) {
           fs.write(__fd, buf, 0, buf.length, _offset, function (err, written) {
             appending = 0
@@ -77,7 +81,6 @@ module.exports = function (file, block_size, flags) {
             cb(null, _offset+written)
           })
         })
-//      })
     },
     /**
      * Writes a buffer directly to a position in the file. This opens the file
@@ -89,6 +92,7 @@ module.exports = function (file, block_size, flags) {
      * @param {function} cb - callback that returns any error as an argument
      */
     write: (buf, pos, cb) => {
+      if(flags !== 'r+') throw new Error('file opened with flags:'+flags+' refusing to write unless flags are:r+')
       offset.once((_offset) => {
         const endPos = pos + buf.length
         const isPastOffset = endPos > _offset
@@ -99,15 +103,13 @@ module.exports = function (file, block_size, flags) {
 
         function onReady (_writing) {
           writing = true
-          fs.open(file, 'r+', function (err, writeFd) {
-            fs.write(writeFd, buf, 0, buf.length, pos, (err, written) => {
-              readyToWrite()
-              if (err == null && written !== buf.length) {
-                cb(new Error('wrote less bytes than expected:'+written+', but wanted:'+buf.length))
-              } else {
-                cb(err)
-              }
-            })
+          fs.write(__fd, buf, 0, buf.length, pos, (err, written) => {
+            readyToWrite()
+            if (err == null && written !== buf.length) {
+              cb(new Error('wrote less bytes than expected:'+written+', but wanted:'+buf.length))
+            } else {
+              cb(err)
+            }
           })
         }
 
