@@ -5,7 +5,8 @@ var path = require('path')
 
 module.exports = function (file, block_size, flags) {
   flags = flags || 'r+'
-  var fd = Obv(), __fd
+  //var fd = Obv(),
+  var __fd
   var offset = Obv()
   var writing = false
   var waitingForWrite = []
@@ -24,7 +25,7 @@ module.exports = function (file, block_size, flags) {
     fs.open(file, 'a', function (_, _fd) {
       fs.close(_fd, function (_) {
         fs.open(file, flags, function (err, _fd) {
-          fd.set(_fd || err)
+          //fd.set(_fd || err)
           __fd = _fd
           fs.stat(file, function (err, stat) {
             offset.set(err ? 0 : stat.size)
@@ -119,21 +120,19 @@ module.exports = function (file, block_size, flags) {
     },
     truncate: function (len, cb) {
       if(appending++) throw new Error('already appending, cannot truncate')
-      fd.once(function (_fd) {
-        if('object' === typeof _fd)
-          return cb(_fd)
-        offset.once(function (_offset) {
-          if(_offset <= len) return cb()
-          fs.ftruncate(_fd, len, function (err) {
-            if(err) cb(err)
-            else {
-              offset.set(len)
-              cb(null, offset.value)
-            }
-          })
+      offset.once(function (_offset) {
+        if(_offset <= len) return cb()
+        fs.ftruncate(__fd, len, function (err) {
+          if(err) cb(err)
+          else {
+            offset.set(len)
+            cb(null, offset.value)
+          }
         })
       })
     }
   }
 }
+
+
 
