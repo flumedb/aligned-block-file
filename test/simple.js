@@ -5,12 +5,9 @@ var File = require('../file')
 
 var tape = require('tape')
 
-var a = new Buffer(32)
-a.fill('a')
-var b = new Buffer(32)
-b.fill('b')
-var c = new Buffer(32)
-c.fill('c')
+var a = Buffer.alloc(32, 'a')
+var b = Buffer.alloc(32, 'b')
+var c = Buffer.alloc(32, 'c')
 
 function Cache () {
   var c = []
@@ -94,5 +91,38 @@ tape('read empty file', function (t) {
   })
 })
 
+tape('overwrite previous data', function (t) {
+  var file = '/tmp/test_block-reader_'+Date.now()
+  var bufs = Blocks(File(file, 32, 'r+'), 32)
+  bufs.append(a, function (err) {
+    t.error(err)
+    bufs.read(0, 32, function (err, bufA) {
+      t.error(err)
+      t.deepEqual(bufA, a)
+      bufs.write(b, 0, function (err) {
+        t.error(err)
+        bufs.read(0, 32, function (err, bufB) {
+          t.error(err)
+          t.deepEqual(bufB, b)
+          bufs.write(b, 1, function (err) {
+            t.ok(err, 'error if writing past last offset')
 
+            // let's make a race condition!
+            // first we'll start writing...
+            bufs.write(c, 0, function (err) {
+              t.error(err)
+            })
+
+            // and we'll start reading before it's done
+            bufs.read(0, 32, (err, bufC) => {
+              t.error(err)
+              t.deepEqual(bufC, c)
+              t.end()
+            })
+          })
+        })
+      })
+    })
+  })
+})
 

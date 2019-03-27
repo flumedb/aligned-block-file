@@ -16,20 +16,12 @@ module.exports = function (reduce) {
   var filename = '/tmp/test_block-reader_'+Date.now()
   var blocks = reduce(null)
 
-  var a = new Buffer(32)
-  a.fill('a')
-
-  var b = new Buffer(32)
-  b.fill('b')
-
-  var c = new Buffer(32)
-  c.fill('c')
-  var d = new Buffer(32)
-  d.fill('d')
-  var e = new Buffer(24)
-  e.fill('e')
-  var f = new Buffer(64)
-  f.fill('f')
+  var a = Buffer.alloc(32, 'a')
+  var b = Buffer.alloc(32, 'b')
+  var c = Buffer.alloc(32, 'c')
+  var d = Buffer.alloc(32, 'd')
+  var e = Buffer.alloc(24, 'e')
+  var f = Buffer.alloc(64, 'f')
 
   tape('append one block', function (t) {
     blocks.append(a, function (err, offset) {

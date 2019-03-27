@@ -9,7 +9,7 @@ module.exports = function (ABF) {
   }
 
   require('./')(ABF, {
-    data: new Buffer(1024*16),
+    data: new Buffer.alloc(1024*16),
     time:10e3, size: 100e6,
     onUpdate: log
   }, function (err, size, time) {

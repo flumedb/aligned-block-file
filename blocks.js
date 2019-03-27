@@ -60,10 +60,11 @@ module.exports = function (file, block_size, cache) {
         bufs.push(block.slice(read_start, read_end))
         start += (read_end - read_start)
 
-        if(start < end) next(i+1)
-        else {
+        if (start < end) {
+          next(i+1)
+        } else {
           var buffer = bufs.length == 1 ? bufs[0] : Buffer.concat(bufs)
-          if(!buffer.length)
+          if (!buffer.length)
             return cb(new Error('read an empty buffer at:'+start + ' to ' + end + '\n'+
               JSON.stringify({
                 start: start, end: end, i:i,
@@ -146,8 +147,7 @@ module.exports = function (file, block_size, cache) {
             var block_start = i*block_size
             var b = cache.get(i)
             if(null == b) {
-              b = new Buffer(block_size)
-              b.fill(0)
+              b = Buffer.alloc(block_size)
               cache.set(i, b)
             }
             //including if set in above if...
@@ -172,6 +172,22 @@ module.exports = function (file, block_size, cache) {
             cb(null, offset)
           })
         }
+      })
+    },
+    /**
+     * Writes a buffer directly to a position in the file.
+     * This wraps `file.write()` and removes the block cache after the file
+     * write finishes to avoid having the item re-cached during the write.
+     *
+     * @param {buffer} buf - the data to write to the file
+     * @param {number} pos - position in the file to write the buffer
+     * @param {function} cb - callback that returns any error as an argument
+     */
+    write: (buf, pos, cb) => {
+      const i = Math.floor(pos/block_size)
+      file.write(buf, pos, (err) => {
+        cache.remove(i)
+        cb(err)
       })
     },
     //we arn't specifically clearing the buffers,
