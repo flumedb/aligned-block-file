@@ -7,14 +7,55 @@ module.exports = function (file, block_size, flags) {
   flags = flags || 'r+'
   var fd
   var offset = Obv()
-  var writing = false
-  var waitingForWrite = []
 
-  function readyToWrite () {
-    if(!writing) throw new Error('should be writing')
-    writing = false
-    while(waitingForWrite.length)
-      waitingForWrite.shift()()
+  // Positional read and write operations may be hazardous. We want to avoid:
+  //
+  // - Concurrent writes to the same part of the file.
+  // - Reading and writing from the same part of the file.
+  //
+  // It's possible (likely?) that Node.js handles this deeper in the stack,
+  // especially since it seems to use `pread()` and `pwrite()`. Removing this
+  // queue system doesn't break any tests, but I'm not confident enough to
+  // remove it until we confirm that Node.js handles concurrent positional
+  // reads and writes without either of the concurrency problems above.
+  //
+  // This async queue system is made of four parts:
+  //
+  // - `busy`: A boolean semaphore for positional reads and writes to `fd`.
+  // - `queue`: An array of functions that want to access `fd`.
+  // - `todo(fn)`: Used to run or queue `fn`, which must call `done()`.
+  // - `done()`: Called by functions passed to `todo()` after using `fd`.
+
+  // If `busy === true` then another function is accessing `fd`.
+  // If `busy === false` then you're all clear to access.
+  let busy = false
+
+  // Each item should be a function that accepts a single argument
+  // That argument should be called as soon as `fd` access is done
+  // Items are processed FIFO even though `Array.shift()` is slow
+  const queue = []
+
+
+  // A function passed to `todo` will have exclusive access to positional 
+  // operations on `fd`, although append operations may still occur.
+  //
+  // Any function passed to `todo()` absolutely *must* call `done()` when
+  // finished using `fd`, often as the first line in the `fs.foo()` callback.
+  const todo = (fn) => {
+    if (busy === true) {
+      queue.push(fn)
+    } else {
+      busy = true
+      fn()
+    }
+  }
+
+  const done = () => {
+    if (queue.length === 0) {
+      busy = false
+    } else {
+      queue.shift()()
+    }
   }
 
   mkdirp(path.dirname(file), function () {
@@ -39,14 +80,15 @@ module.exports = function (file, block_size, flags) {
   return {
     get: function (i, cb) {
       offset.once(function (_offset) {
+        var max = ~~(_offset / block_size)
+        if(i > max)
+          return cb(new Error('aligned-block-file/file.get: requested block index was greater than max, got:'+i+', expected less than or equal to:'+max))
+
+        var buf = Buffer.alloc(block_size)
+
         function onReady () {
-          var max = ~~(_offset / block_size)
-          if(i > max)
-            return cb(new Error('aligned-block-file/file.get: requested block index was greater than max, got:'+i+', expected less than or equal to:'+max))
-
-          var buf = Buffer.alloc(block_size)
-
           fs.read(fd, buf, 0, block_size, i*block_size, function (err, bytes_read) {
+            done()
             if(err) cb(err)
             else if(
               //if bytes_read is wrong
@@ -63,23 +105,22 @@ module.exports = function (file, block_size, flags) {
               cb(null, buf, bytes_read)
           })
         }
-        if(!writing) onReady()
-        else waitingForWrite.push(onReady)
+        todo(onReady)
       })
     },
     offset: offset,
     size: function () { return offset.value },
     append: function (buf, cb) {
       if(appending++) throw new Error('already appending to this file')
-        offset.once(function (_offset) {
-          fs.write(fd, buf, 0, buf.length, _offset, function (err, written) {
-            appending = 0
-            if(err) return cb(err)
-            if(written !== buf.length) return cb(new Error('wrote less bytes than expected:'+written+', but wanted:'+buf.length))
-            offset.set(_offset+written)
-            cb(null, _offset+written)
-          })
+      offset.once(function (_offset) {
+        fs.write(fd, buf, 0, buf.length, _offset, function (err, written) {
+          appending = 0
+          if(err) return cb(err)
+          if(written !== buf.length) return cb(new Error('wrote less bytes than expected:'+written+', but wanted:'+buf.length))
+          offset.set(_offset+written)
+          cb(null, _offset+written)
         })
+      })
     },
     /**
      * Writes a buffer directly to a position in the file. This opens the file
@@ -100,10 +141,9 @@ module.exports = function (file, block_size, flags) {
           return cb(new Error(`cannot write past offset: ${endPos} > ${_offset}`))
         }
 
-        function onReady (_writing) {
-          writing = true
+        function onReady () {
           fs.write(fd, buf, 0, buf.length, pos, (err, written) => {
-            readyToWrite()
+            done()
             if (err == null && written !== buf.length) {
               cb(new Error('wrote less bytes than expected:'+written+', but wanted:'+buf.length))
             } else {
@@ -112,8 +152,7 @@ module.exports = function (file, block_size, flags) {
           })
         }
 
-        if(!writing) onReady()
-        else waitingForWrite.push(onReady)
+        todo(onReady)
       })
     },
     truncate: function (len, cb) {
