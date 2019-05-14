@@ -23,15 +23,15 @@ module.exports = function (file, block_size, flags) {
   //
   // - `busy`: A boolean semaphore for positional reads and writes to `fd`.
   // - `queue`: An array of functions that want to access `fd`.
-  // - `todo(fn)`: Used to run or queue `fn`, which must call `done()`.
-  // - `done()`: Called by functions passed to `todo()` after using `fd`.
+  // - `todo(fn)`: Used to run or queue `fn`, which must call `release()`.
+  // - `release()`: Called by functions passed to `todo()` after using `fd`.
 
   // If `busy === true` then another function is accessing `fd`.
   // If `busy === false` then you're all clear to access.
   let busy = false
 
-  // Each item should be a function that accepts a single argument
-  // That argument should be called as soon as `fd` access is done
+  // Each item should be a function that accepts no arguments.
+  // `release()` should be called as soon as `fd` access is complete.
   // Items are processed FIFO even though `Array.shift()` is slow
   const queue = []
 
@@ -39,7 +39,7 @@ module.exports = function (file, block_size, flags) {
   // A function passed to `todo` will have exclusive access to positional 
   // operations on `fd`, although append operations may still occur.
   //
-  // Any function passed to `todo()` absolutely *must* call `done()` when
+  // Any function passed to `todo()` absolutely *must* call `release()` when
   // finished using `fd`, often as the first line in the `fs.foo()` callback.
   const todo = (fn) => {
     if (busy === true) {
@@ -50,7 +50,7 @@ module.exports = function (file, block_size, flags) {
     }
   }
 
-  const done = () => {
+  const release = () => {
     if (queue.length === 0) {
       busy = false
     } else {
@@ -80,15 +80,15 @@ module.exports = function (file, block_size, flags) {
   return {
     get: function (i, cb) {
       offset.once(function (_offset) {
-        var max = ~~(_offset / block_size)
-        if(i > max)
-          return cb(new Error('aligned-block-file/file.get: requested block index was greater than max, got:'+i+', expected less than or equal to:'+max))
-
-        var buf = Buffer.alloc(block_size)
-
         function onReady () {
+          var max = ~~(_offset / block_size)
+          if(i > max)
+            return cb(new Error('aligned-block-file/file.get: requested block index was greater than max, got:'+i+', expected less than or equal to:'+max))
+
+          var buf = Buffer.alloc(block_size)
+
           fs.read(fd, buf, 0, block_size, i*block_size, function (err, bytes_read) {
-            done()
+            release()
             if(err) cb(err)
             else if(
               //if bytes_read is wrong
@@ -143,7 +143,7 @@ module.exports = function (file, block_size, flags) {
 
         function onReady () {
           fs.write(fd, buf, 0, buf.length, pos, (err, written) => {
-            done()
+            release()
             if (err == null && written !== buf.length) {
               cb(new Error('wrote less bytes than expected:'+written+', but wanted:'+buf.length))
             } else {
