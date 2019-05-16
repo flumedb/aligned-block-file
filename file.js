@@ -2,6 +2,7 @@ var fs = require('fs')
 var mkdirp = require('mkdirp')
 var Obv = require('obv')
 var path = require('path')
+const ReadWriteLock = require('rwlock');
 
 module.exports = function (file, block_size, flags) {
   flags = flags || 'r+'
@@ -13,50 +14,16 @@ module.exports = function (file, block_size, flags) {
   // - Concurrent writes to the same part of the file.
   // - Reading and writing from the same part of the file.
   //
-  // It's possible (likely?) that Node.js handles this deeper in the stack,
-  // especially since it seems to use `pread()` and `pwrite()`. Removing this
-  // queue system doesn't break any tests, but I'm not confident enough to
-  // remove it until we confirm that Node.js handles concurrent positional
-  // reads and writes without either of the concurrency problems above.
+  // It's likely that Node.js is handling this deeper in the stack with libuv
+  // operations like `pread()` and `pwrite()`, but they haven't explicitly
+  // committed to this behavior:
   //
-  // This async queue system is made of four parts:
+  // https://github.com/nodejs/node/issues/18634#issuecomment-363981993
   //
-  // - `busy`: A boolean semaphore for positional reads and writes to `fd`.
-  // - `queue`: An array of functions that want to access `fd`.
-  // - `todo(fn)`: Used to run or queue `fn`, which must call `release()`.
-  // - `release()`: Called by functions passed to `todo()` after using `fd`.
-
-  // If `busy === true` then another function is accessing `fd`.
-  // If `busy === false` then you're all clear to access.
-  let busy = false
-
-  // Each item should be a function that accepts no arguments.
-  // `release()` should be called as soon as `fd` access is complete.
-  // Items are processed FIFO even though `Array.shift()` is slow
-  const queue = []
-
-
-  // A function passed to `todo` will have exclusive access to positional 
-  // operations on `fd`, although append operations may still occur.
+  // > This is not safe on all platforms, no.
   //
-  // Any function passed to `todo()` absolutely *must* call `release()` when
-  // finished using `fd`, often as the first line in the `fs.foo()` callback.
-  const todo = (fn) => {
-    if (busy === true) {
-      queue.push(fn)
-    } else {
-      busy = true
-      fn()
-    }
-  }
 
-  const release = () => {
-    if (queue.length === 0) {
-      busy = false
-    } else {
-      queue.shift()()
-    }
-  }
+  const lock = new ReadWriteLock();
 
   mkdirp(path.dirname(file), function () {
     //r+ opens the file for reading and writing, but errors if file does not exist.
@@ -80,7 +47,7 @@ module.exports = function (file, block_size, flags) {
   return {
     get: function (i, cb) {
       offset.once(function (_offset) {
-        function onReady () {
+        lock.readLock((release) => {
           var max = ~~(_offset / block_size)
           if(i > max)
             return cb(new Error('aligned-block-file/file.get: requested block index was greater than max, got:'+i+', expected less than or equal to:'+max))
@@ -104,8 +71,7 @@ module.exports = function (file, block_size, flags) {
             else
               cb(null, buf, bytes_read)
           })
-        }
-        todo(onReady)
+        })
       })
     },
     offset: offset,
@@ -141,7 +107,7 @@ module.exports = function (file, block_size, flags) {
           return cb(new Error(`cannot write past offset: ${endPos} > ${_offset}`))
         }
 
-        function onReady () {
+        lock.writeLock((release) => {
           fs.write(fd, buf, 0, buf.length, pos, (err, written) => {
             release()
             if (err == null && written !== buf.length) {
@@ -150,9 +116,7 @@ module.exports = function (file, block_size, flags) {
               cb(err)
             }
           })
-        }
-
-        todo(onReady)
+        })
       })
     },
     truncate: function (len, cb) {
