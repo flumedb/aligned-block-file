@@ -12,6 +12,7 @@
     "int53": "^1.0.0",
     "mkdirp": "^0.5.1",
     "obv": "^0.0.1",
+    "rwlock": "^5.0.0",
     "uint48be": "^2.0.1"
   },
   "devDependencies": {
